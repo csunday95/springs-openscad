@@ -1,6 +1,7 @@
 
 include <util/radial_square_notches.scad>
 include <../shafts/parts/keyed_shaft.scad>
+include <archimedian_spiral.scad>
 
 module line(point1, point2, width = 1, cap_round = true) {
     angle = 90 - atan((point2[1] - point1[1]) / (point2[0] - point1[0]));
@@ -24,20 +25,24 @@ module line(point1, point2, width = 1, cap_round = true) {
 module polyline(points, width = 1) {
     module polyline_inner(points, index) {
         if(index < len(points)) {
-            line(points[index - 1], points[index], width);
+            line(points[index - 1], points[index], width, true);
             polyline_inner(points, index + 1);
         }
+    }
+    module polyline_inner_iter() {
+      
     }
 
     polyline_inner(points, 1);
 }
 
-$fs = 0.05;
+$fs = 0.01;
 $fa = 0.01;
 
-step = 0.05;
+step = 0.1;
 circles = 8;
-arm_len = 7;
+arm_len = 6.25;
+thickness = 1.75;
 
 b = arm_len / 2 / PI;
 // one radian is almost 57.2958 degrees
@@ -45,25 +50,27 @@ points = [for(theta = [0:step:2 * PI * circles])
     [b * theta * cos(theta * 57.2958), b * theta * sin(theta * 57.2958)]
 ];
 
-inner_radius = 5;
-notch_size = 2;
-shaft_height = 5;
-shaft_radius = 4;
-spring_height = 10;
+notch_size = 1.5;
+shaft_radius = 6;
+inner_radius = shaft_radius + notch_size;
+spring_height = 15;
+shaft_height = 20;
+total_radius = arm_len * circles;
+notch_scale_factor = 0.93;
+echo(total_radius * 2);
 
 difference() {
     union() {
         linear_extrude(spring_height)
-            polyline(points, 2.5);
-        cylinder(r=10, h=spring_height);
-        translate([56, 0, 0])
-          cylinder(r=2, h=spring_height + 5);
+            polyline(points, thickness);
+        cylinder(r=inner_radius, h=spring_height);
+        translate([total_radius, 0, 0])
+          cylinder(r=3, h=spring_height + shaft_height);
         translate([0, 0, (spring_height + shaft_height) / 2])
             keyed_shaft(
                 shaft_radius=shaft_radius,
                 shaft_length=spring_height + shaft_height,
-                key_height=1,
-                key_width=1.5,
+                key_width=notch_size * notch_scale_factor,
                 key_length=spring_height + shaft_height,
                 key_count=4
             );
