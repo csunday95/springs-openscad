@@ -12,11 +12,32 @@ module barrel_half_blank(inner_radius, depth, base_thickness, wall_thickness) {
 }
 
 module spring_barrel_lower(inner_radius, depth, base_thickness, wall_thickness, locking_lug_spec, lug_count) {
-  difference() {
+  union() {
     barrel_half_blank(inner_radius, depth, base_thickness, wall_thickness);
     for (a = [0:360/lug_count:360]) {
       rotate([0, 0, a + 45])
-        translate([0, 0, depth + base_thickness - 2 * locking_lug_spec[0]])
+        translate([0, 0, depth + base_thickness + 1.99 * locking_lug_spec[0]])
+          rotate([180, 0, 0])
+            cylinder_locking_lug_L(
+              locking_lug_spec[0],
+              locking_lug_spec[1],
+              inner_radius + locking_lug_spec[0] / 2,
+            );
+    }
+  }
+}
+
+module spring_barrel_upper(inner_radius, depth, top_thickness, wall_thickness, locking_lug_spec, lug_count,
+    bearing_od, bearing_id, bearing_notch_size, bearing_notch_count, bearing_height,
+    spring_peg_radius) {
+  vent_cylinder_radius = (inner_radius - bearing_od / 2) / 4;
+  difference() {
+    barrel_half_blank(inner_radius, depth, top_thickness, wall_thickness);
+    cylinder(r=bearing_od/2, h=bearing_height, center=true);
+    cylinder(r=bearing_id/2, h=top_thickness + depth / 2);
+    for (a = [0:360/lug_count:360]) {
+      rotate([0, 0, a + 45]) {
+        translate([0, 0, depth + top_thickness - 2 * locking_lug_spec[0]])
           rotate([0, 0, 0])
             cylinder_locking_lug_L(
               locking_lug_spec[0],
@@ -24,16 +45,16 @@ module spring_barrel_lower(inner_radius, depth, base_thickness, wall_thickness, 
               inner_radius + locking_lug_spec[0] / 2,
               true
             );
+        translate([inner_radius - bearing_od / 4, 0, - (top_thickness + depth) / 2])
+          cylinder(r=vent_cylinder_radius, h=top_thickness + depth);
+      }
     }
-  }
-}
-
-module spring_barrel_upper(inner_radius, depth, top_thickness, wall_thickness, locking_lug_spec, lug_count,
-    bearing_od, bearing_id, bearing_notch_size, bearing_notch_count, bearing_height) {
-  difference() {
-    barrel_half_blank(inner_radius, depth, top_thickness, wall_thickness);
-    cylinder(r=bearing_od/2, h=bearing_height, center=true);
-    cylinder(r=bearing_id/2, h=top_thickness + depth / 2);
+    // end of spring peg hole
+    translate([inner_radius - spring_peg_radius / 2, 0, -depth / 4])
+      cylinder(
+        r=spring_peg_radius * spring_peg_margin_factor, 
+        h=(top_thickness + depth) * 2
+      );
   }
   translate([0, 0, bearing_height/4])
     radial_square_notches(
@@ -42,16 +63,6 @@ module spring_barrel_upper(inner_radius, depth, top_thickness, wall_thickness, l
       notches=bearing_notch_count,
       radius=bearing_od/2
     );
-  for (a = [0:360/lug_count:360]) {
-    rotate([0, 0, a])
-      translate([0, 0, depth + top_thickness + 1.99 * locking_lug_spec[0]])
-        rotate([180, 0, 0])
-          cylinder_locking_lug_L(
-            locking_lug_spec[0],
-            locking_lug_spec[1],
-            inner_radius + locking_lug_spec[0] / 2,
-          );
-  }
 }
 
 module test_spring_barrel() {
@@ -77,7 +88,8 @@ module test_spring_barrel() {
         radius=inner_radius
       );
   }
-  translate([(inner_radius + wall_thickness) * 2 + 5, 0, 0])
+  translate([(inner_radius + wall_thickness) * 2 + 5, 0, depth + base_thickness])
+    rotate([180, 0, 0])
     spring_barrel_upper(
       inner_radius,
       depth,
@@ -89,10 +101,14 @@ module test_spring_barrel() {
       bearing_id=48.9 - 14, 
       bearing_notch_size=1.5,
       bearing_notch_count=16, 
-      bearing_height=12
+      bearing_height=12,
+      spring_peg_radius=3
     );
 }
 
 $fs = 0.5;
 $fa = 0.2;
+
+spring_peg_margin_factor = 1.05;
+
 test_spring_barrel();
